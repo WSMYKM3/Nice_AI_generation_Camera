@@ -72,7 +72,7 @@ blocks.json
 | Depth estimation | ⬜ not started | need to pick + integrate a depth model |
 | Rotation estimation | ⬜ not started | derive from depth gradient or assume upright |
 | JSON export | ✅ basic version | `blocks.json`, no depth/rotation yet |
-| Unity importer | ⬜ not started | C# script to read JSON and spawn prefabs |
+| Unity importer | ✅ working | `Unity/BlockSpawner.cs` — reads JSON, spawns prefabs |
 
 ---
 
