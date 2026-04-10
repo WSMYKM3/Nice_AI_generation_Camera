@@ -1,13 +1,16 @@
 """
-MagicCamera Pipeline — YOLOv8-seg + Depth Estimation → blocks.json
+MagicCamera Pipeline — YOLOv8-seg + Depth Estimation → blocks_<stem>.json
 
 Usage:
-    python main.py <image_path> [--output blocks.json] [--conf 0.5] [--show]
+    python main.py <image_path> [--output path.json] [--conf 0.5] [--show]
+
+Defaults: blocks_<picture_stem>.json and (with --show) output_<picture_stem>.png
 """
 
 import argparse
 import json
 import sys
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -102,7 +105,7 @@ def compute_geometry(boxes, masks, class_names, depth_map, img_h, img_w):
 
 # ── Visualisation ────────────────────────────────────────────────────────────
 
-def visualise(image_bgr, result, depth_map):
+def visualise(image_bgr, result, depth_map, png_path: str):
     """Show YOLO detections + depth map side by side."""
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
@@ -118,7 +121,7 @@ def visualise(image_bgr, result, depth_map):
     axes[1].axis("off")
 
     plt.tight_layout()
-    plt.savefig("output.png", dpi=150)
+    plt.savefig(png_path, dpi=150)
     plt.show()
 
 
@@ -127,10 +130,18 @@ def visualise(image_bgr, result, depth_map):
 def main():
     parser = argparse.ArgumentParser(description="MagicCamera pipeline")
     parser.add_argument("image", help="Path to input image")
-    parser.add_argument("--output", default="blocks.json", help="Output JSON path")
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="Output JSON path (default: blocks_<picture_stem>.json)",
+    )
     parser.add_argument("--conf", type=float, default=DEFAULT_CONF, help="YOLO confidence threshold")
     parser.add_argument("--show", action="store_true", help="Show visualisation")
     args = parser.parse_args()
+
+    stem = Path(args.image).stem
+    json_path = args.output if args.output is not None else f"blocks_{stem}.json"
+    png_path = f"output_{stem}.png"
 
     print(f"[1/5] Loading image: {args.image}")
     image_bgr = cv2.imread(args.image)
@@ -156,7 +167,7 @@ def main():
 
     if result.boxes is None or len(result.boxes) == 0:
         print("      No objects detected. Exiting.")
-        json.dump({"blocks": []}, open(args.output, "w"), indent=2)
+        json.dump({"blocks": []}, open(json_path, "w"), indent=2)
         sys.exit(0)
 
     boxes = result.boxes.xyxy.cpu().numpy()
@@ -189,14 +200,14 @@ def main():
     for b in blocks:
         print(f"      [{b['id']}] {b['type']:20s}  pos={b['position']}  depth={b['depth']}")
 
-    print(f"[5/5] Writing {args.output}...")
-    with open(args.output, "w") as f:
+    print(f"[5/5] Writing {json_path}...")
+    with open(json_path, "w") as f:
         json.dump({"blocks": blocks}, f, indent=2)
     print(f"      Done — {len(blocks)} blocks saved.")
 
     if args.show:
         print("      Opening visualisation...")
-        visualise(image_bgr, result, depth_map)
+        visualise(image_bgr, result, depth_map, png_path)
     else:
         print("      (use --show to see visualisation)")
 
